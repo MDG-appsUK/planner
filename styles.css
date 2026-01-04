@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=EB+Garamond:wght@400;600&display=swap');
+
 :root{
   /* iPhone notch safe areas + “lower it slightly” */
   --safe-top: env(safe-area-inset-top, 0px);
@@ -14,6 +16,14 @@
   --danger:#ff5a6a;
   --pill-bg: rgba(90,169,255,0.16);
   --pill-border: rgba(90,169,255,0.35);
+
+  /* Parchment palette */
+  --parch-ink: #2b2416;
+  --parch-line: rgba(62,44,18,0.18);
+  --parch-bg1: rgba(244,236,210,0.94);
+  --parch-bg2: rgba(231,218,182,0.94);
+  --parch-glow1: rgba(255,255,255,0.35);
+  --parch-glow2: rgba(255,255,255,0.22);
 }
 
 html[data-theme="light"]{
@@ -45,6 +55,53 @@ body{
   background: color-mix(in srgb, var(--bg) 92%, transparent);
   border-bottom:1px solid var(--line);
   backdrop-filter: blur(10px);
+}
+
+/* -------- PARCHMENT HEADER (Agenda-only) -------- */
+html[data-view="agenda"] .topbar{
+  background:
+    radial-gradient(900px 500px at 10% 10%, var(--parch-glow1), transparent 60%),
+    radial-gradient(700px 420px at 90% 30%, var(--parch-glow2), transparent 55%),
+    linear-gradient(180deg, var(--parch-bg1), var(--parch-bg2));
+  border-bottom:1px solid var(--parch-line);
+  backdrop-filter: none;
+}
+html[data-view="agenda"] .dateLabel{
+  font-family: "Cinzel", -apple-system, system-ui, serif;
+  letter-spacing:0.3px;
+  color: var(--parch-ink);
+}
+html[data-view="agenda"] .subLabel{
+  font-family: "EB Garamond", Georgia, serif;
+  font-size:14px;
+  color: color-mix(in srgb, var(--parch-ink) 78%, transparent);
+}
+html[data-view="agenda"] .segmented{
+  border-color: var(--parch-line);
+  background: rgba(255,255,255,0.35);
+}
+html[data-view="agenda"] .segBtn{
+  color: color-mix(in srgb, var(--parch-ink) 60%, transparent);
+}
+html[data-view="agenda"] .segBtn.active{
+  color: var(--parch-ink);
+  background: rgba(255,255,255,0.40);
+}
+html[data-view="agenda"] .btn,
+html[data-view="agenda"] .select{
+  border-color: var(--parch-line);
+  background: rgba(255,255,255,0.35);
+  color: var(--parch-ink);
+}
+html[data-view="agenda"] .btn.primary{
+  background: color-mix(in srgb, var(--accent) 76%, white);
+  border-color: transparent;
+  color:#081019;
+}
+html[data-view="agenda"] .btn.danger{
+  background: rgba(255,255,255,0.25);
+  border-color: color-mix(in srgb, var(--danger) 35%, transparent);
+  color: var(--danger);
 }
 
 .row{
@@ -120,6 +177,7 @@ textarea{ resize: vertical; }
   background: var(--card);
 }
 
+/* ---------- Day view timeline ---------- */
 .timeline .slot{
   display:flex;
   align-items:stretch;
@@ -172,6 +230,7 @@ textarea{ resize: vertical; }
   padding:6px 8px;
 }
 
+/* ---------- Dialog ---------- */
 .dialog{
   border:1px solid var(--line);
   border-radius:16px;
@@ -209,6 +268,7 @@ textarea{ resize: vertical; }
   justify-content:flex-end;
 }
 
+/* ---------- Calendars dialog ---------- */
 .calList{
   display:flex;
   flex-direction:column;
@@ -228,7 +288,7 @@ textarea{ resize: vertical; }
 .small{ font-size:12px; color:var(--muted); }
 .gap{ gap:8px; }
 
-/* Week view grid */
+/* ---------- Week view ---------- */
 .weekWrap{
   overflow:auto;
   -webkit-overflow-scrolling: touch;
@@ -279,6 +339,7 @@ textarea{ resize: vertical; }
   overflow:hidden;
   text-overflow:ellipsis;
 }
+
 .dotRow{
   display:flex;
   gap:6px;
@@ -292,7 +353,7 @@ textarea{ resize: vertical; }
   border:1px solid color-mix(in srgb, var(--line) 60%, transparent);
 }
 
-/* Month view */
+/* ---------- Month view ---------- */
 .monthGrid{
   border:1px solid var(--line);
   border-radius:16px;
@@ -336,4 +397,62 @@ textarea{ resize: vertical; }
   padding:0;
   text-align:left;
   width:100%;
+}
+
+/* ---------- Agenda view (parchment page) ---------- */
+.agendaCard{
+  border:1px solid var(--parch-line);
+  border-radius:16px;
+  overflow:hidden;
+  padding:14px;
+  background:
+    radial-gradient(900px 500px at 10% 10%, var(--parch-glow1), transparent 60%),
+    radial-gradient(700px 420px at 90% 30%, var(--parch-glow2), transparent 55%),
+    linear-gradient(180deg, var(--parch-bg1), var(--parch-bg2));
+  color:var(--parch-ink);
+}
+
+.agendaTitle{
+  font-family: "Cinzel", -apple-system, system-ui, serif;
+  font-weight:700;
+  letter-spacing:0.3px;
+  font-size:16px;
+  margin:0 0 10px 0;
+}
+
+.agendaList{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  margin:0;
+  padding:0;
+  list-style:none;
+  font-family: "EB Garamond", Georgia, serif;
+  font-size:16px;
+}
+
+.agendaItem{
+  padding:10px 12px;
+  border-radius:14px;
+  border:1px solid var(--parch-line);
+  background: rgba(255,255,255,0.35);
+}
+
+.agendaLine{
+  font-weight:600;
+}
+
+.agendaSub{
+  margin-top:6px;
+  font-size:14px;
+  opacity:0.85;
+}
+
+.agendaEmpty{
+  font-family: "EB Garamond", Georgia, serif;
+  font-size:16px;
+  padding:14px 12px;
+  border-radius:14px;
+  border:1px dashed rgba(62,44,18,0.25);
+  background: rgba(255,255,255,0.25);
 }

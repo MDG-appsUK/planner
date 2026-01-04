@@ -1,13 +1,15 @@
-/* Day Planner v2 (static PWA)
-   - Day / Week / Month views
+/* Day Planner v3 (static PWA)
+   - Default view: Agenda (compact list)
+   - Agenda-only parchment header styling (via html[data-view])
+   - Day / Week / Month views + prev/next navigation
    - Multiple calendars
    - Events: title, start/end, location, notes, color
    - Repeats: daily, weekdays, weekly, monthly, until date
-   - Delete repeating: delete one occurrence OR whole series (via exdates)
+   - Delete repeating: delete one occurrence OR whole series (exdates)
    - Local storage only (localStorage)
 */
 
-const STORE_KEY = "day_planner_v2";
+const STORE_KEY = "day_planner_v3";
 const START_MIN = 6 * 60;
 const END_MIN = 24 * 60;
 const STEP = 30;
@@ -61,7 +63,7 @@ function loadState(){
     const defaultCalId = uid();
     return {
       theme: "dark",
-      activeView: "day",
+      activeView: "agenda",                 // default view
       activeDate: toDateISO(new Date()),
       activeCalendarId: defaultCalId,
       calendars: [{ id: defaultCalId, name: "Personal" }],
@@ -92,7 +94,6 @@ function setTheme(theme){
   saveState();
   render();
 }
-
 function toggleTheme(){
   setTheme(state.theme === "light" ? "dark" : "light");
 }
@@ -102,13 +103,11 @@ function setActiveView(view){
   saveState();
   render();
 }
-
 function setActiveDate(iso){
   state.activeDate = iso;
   saveState();
   render();
 }
-
 function setActiveCalendar(id){
   state.activeCalendarId = id;
   saveState();
@@ -152,7 +151,6 @@ function occursOnDate(evt, isoDate){
   if (freq === "weekly") return diffDays % 7 === 0;
 
   if (freq === "monthly") {
-    // same day-of-month as startDate, but clamp to last day if shorter month
     const sd = start.getDate();
     const y = target.getFullYear(), m = target.getMonth();
     const dim = daysInMonth(y, m);
@@ -183,24 +181,25 @@ function startOfWeek(iso){
   d.setDate(d.getDate() + mondayOffset);
   return d;
 }
-
 function addDays(dateObj, n){
   const d = new Date(dateObj);
   d.setDate(d.getDate() + n);
   d.setHours(0,0,0,0);
   return d;
 }
-
 function rangeOfWeekDates(iso){
   const mon = startOfWeek(iso);
   return Array.from({length:7}, (_,i) => addDays(mon, i));
 }
 
+/* ---------- Rendering ---------- */
 function renderTopBar(){
   ensureActiveCalendarValid();
-  document.documentElement.setAttribute("data-theme", state.theme === "light" ? "light" : "dark");
 
-  // Segmented active
+  document.documentElement.setAttribute("data-theme", state.theme === "light" ? "light" : "dark");
+  document.documentElement.setAttribute("data-view", state.activeView); // drives Agenda-only parchment header
+
+  // Segmented active state
   for (const btn of document.querySelectorAll(".segBtn")) {
     btn.classList.toggle("active", btn.dataset.view === state.activeView);
     btn.setAttribute("aria-selected", btn.dataset.view === state.activeView ? "true" : "false");
@@ -209,7 +208,7 @@ function renderTopBar(){
   // Date label depends on view
   const activeD = fromISODate(state.activeDate);
 
-  if (state.activeView === "day") {
+  if (state.activeView === "day" || state.activeView === "agenda") {
     $("dateLabel").textContent = formatNiceDate(activeD);
   } else if (state.activeView === "week") {
     const week = rangeOfWeekDates(state.activeDate);
@@ -224,7 +223,7 @@ function renderTopBar(){
   const cal = state.calendars.find(c => c.id === state.activeCalendarId);
   $("activeCalendarLabel").textContent = cal ? `Calendar: ${cal.name}` : "No calendar";
 
-  // calendar select
+  // calendar select options
   const sel = $("calendarSelect");
   sel.innerHTML = "";
   for (const c of state.calendars) {
@@ -245,6 +244,9 @@ function renderTopBar(){
     if (c.id === state.activeCalendarId) opt.selected = true;
     evtSel.appendChild(opt);
   }
+
+  // Primary action label: Agenda => Populate, otherwise Add
+  $("primaryAction").textContent = (state.activeView === "agenda") ? "Populate" : "+ Add";
 }
 
 function render(){
@@ -256,13 +258,73 @@ function renderView(){
   const host = $("viewHost");
   host.innerHTML = "";
 
-  if (state.activeView === "day") {
-    host.appendChild(renderDayView());
-  } else if (state.activeView === "week") {
-    host.appendChild(renderWeekView());
-  } else {
-    host.appendChild(renderMonthView());
+  if (state.activeView === "agenda") host.appendChild(renderAgendaView());
+  else if (state.activeView === "day") host.appendChild(renderDayView());
+  else if (state.activeView === "week") host.appendChild(renderWeekView());
+  else host.appendChild(renderMonthView());
+}
+
+/* ---------- Agenda view ---------- */
+function renderAgendaView(){
+  const iso = state.activeDate;
+  const evts = eventsForCalendarOnDate(state.activeCalendarId, iso)
+    .slice()
+    .sort((a,b) => timeToMins(a.start) - timeToMins(b.start));
+
+  const card = document.createElement("div");
+  card.className = "agendaCard";
+
+  const title = document.createElement("h3");
+  title.className = "agendaTitle";
+  title.textContent = "Day’s Ledger";
+  card.appendChild(title);
+
+  if (evts.length === 0) {
+    const empty = document.createElement("div");
+    empty.className = "agendaEmpty";
+    empty.textContent = "No entries for this day.";
+    card.appendChild(empty);
+    return card;
   }
+
+  const ul = document.createElement("ul");
+  ul.className = "agendaList";
+
+  for (const e of evts) {
+    const li = document.createElement("li");
+    li.className = "agendaItem";
+
+    if (e.color) {
+      li.style.borderColor = colorMix(e.color, 0.35);
+      li.style.background = `linear-gradient(90deg, ${colorMix(e.color, 0.14, true)}, rgba(255,255,255,0.28))`;
+    }
+
+    const line = document.createElement("div");
+    line.className = "agendaLine";
+    line.textContent = `${e.start} – ${e.end}: ${e.title}`;
+    li.appendChild(line);
+
+    const subBits = [];
+    if (e.location) subBits.push(e.location);
+    if (e.notes) subBits.push(e.notes.length > 180 ? e.notes.slice(0,180) + "…" : e.notes);
+
+    if (subBits.length) {
+      const sub = document.createElement("div");
+      sub.className = "agendaSub";
+      sub.textContent = subBits.join(" • ");
+      li.appendChild(sub);
+    }
+
+    li.style.cursor = "pointer";
+    li.addEventListener("click", () => {
+      openEventDialog({ ...e, date: iso, isEdit: true });
+    });
+
+    ul.appendChild(li);
+  }
+
+  card.appendChild(ul);
+  return card;
 }
 
 /* ---------- Day view ---------- */
@@ -274,7 +336,6 @@ function renderDayView(){
   const iso = state.activeDate;
   const evts = eventsForCalendarOnDate(state.activeCalendarId, iso);
 
-  // group by start slot
   const starts = new Map();
   for (const e of evts) {
     const m = timeToMins(e.start);
@@ -325,7 +386,6 @@ function renderWeekView(){
   const weekISOs = weekDates.map(toDateISO);
   const slots = buildSlots();
 
-  // Header
   const header = document.createElement("div");
   header.className = "weekHeader";
 
@@ -340,23 +400,18 @@ function renderWeekView(){
     const h = document.createElement("div");
     h.className = "hcell";
     h.textContent = label;
-
-    // Tap header day to jump to day view
     h.style.cursor = "pointer";
     h.addEventListener("click", () => {
       setActiveDate(toDateISO(d));
       setActiveView("day");
     });
-
     header.appendChild(h);
   }
 
-  // Body
   const body = document.createElement("div");
   body.className = "weekBody";
 
-  // Precompute occurrences in week, bucketed by [iso][startMins]
-  const bucket = new Map(); // key: `${iso}|${mins}` -> [events]
+  const bucket = new Map(); // `${iso}|${mins}` -> [events]
   for (const iso of weekISOs) {
     const evts = eventsForCalendarOnDate(state.activeCalendarId, iso);
     for (const e of evts) {
@@ -397,17 +452,22 @@ function renderWeekView(){
         const pill = document.createElement("div");
         pill.className = "miniPill";
         pill.textContent = evt.title;
-        pill.style.borderColor = evt.color ? colorMix(evt.color, 0.35) : "";
-        pill.style.background = evt.color ? colorMix(evt.color, 0.12, true) : "";
+
+        if (evt.color) {
+          pill.style.borderColor = colorMix(evt.color, 0.35);
+          pill.style.background = colorMix(evt.color, 0.12, true);
+        }
+
         pill.addEventListener("click", (ev) => {
           ev.stopPropagation();
           openEventDialog({ ...evt, date: iso, isEdit: true });
         });
-        // long-press not reliable; add delete via context menu
+
         pill.addEventListener("contextmenu", (ev) => {
           ev.preventDefault();
           requestDelete(evt, iso);
         });
+
         cell.appendChild(pill);
       }
 
@@ -441,10 +501,9 @@ function renderMonthView(){
 
   const first = new Date(y, m, 1);
   first.setHours(0,0,0,0);
-  const firstDow = (first.getDay() + 6) % 7; // convert Sun=0.. to Mon=0..6
+  const firstDow = (first.getDay() + 6) % 7; // Mon=0..Sun=6
   const dim = daysInMonth(y, m);
 
-  // Header weekdays
   const header = document.createElement("div");
   header.className = "monthHeader";
   for (const wd of ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"]) {
@@ -461,7 +520,7 @@ function renderMonthView(){
     const dayCell = document.createElement("div");
     dayCell.className = "dayCell";
 
-    const dayIndex = cell - firstDow + 1; // 1..dim
+    const dayIndex = cell - firstDow + 1;
     const inMonth = dayIndex >= 1 && dayIndex <= dim;
 
     if (!inMonth) {
@@ -486,7 +545,6 @@ function renderMonthView(){
     const dots = document.createElement("div");
     dots.className = "dotRow";
 
-    // show up to 6 dots for events on that day
     const evts = eventsForCalendarOnDate(state.activeCalendarId, iso);
     for (const e of evts.slice(0,6)) {
       const dot = document.createElement("div");
@@ -512,7 +570,6 @@ function buildEventPill(e){
   const pill = document.createElement("div");
   pill.className = "eventPill";
 
-  // color styling (optional)
   if (e.color) {
     pill.style.borderColor = colorMix(e.color, 0.35);
     pill.style.background = colorMix(e.color, 0.12, true);
@@ -537,16 +594,14 @@ function buildEventPill(e){
   }
   meta.textContent = parts.join(" • ");
 
+  left.appendChild(title);
+  left.appendChild(meta);
+
   if (e.notes) {
     const notes = document.createElement("div");
     notes.className = "eventMeta";
     notes.textContent = e.notes.length > 140 ? e.notes.slice(0, 140) + "…" : e.notes;
-    left.appendChild(title);
-    left.appendChild(meta);
     left.appendChild(notes);
-  } else {
-    left.appendChild(title);
-    left.appendChild(meta);
   }
 
   const del = document.createElement("button");
@@ -567,7 +622,7 @@ function buildEventPill(e){
   return pill;
 }
 
-/* ---------- Delete logic (one occurrence vs all) ---------- */
+/* ---------- Delete logic ---------- */
 let pendingDelete = null;
 
 function requestDelete(evt, occurrenceISO){
@@ -645,7 +700,6 @@ function openEventDialog({
   $("evtLocation").value = location || "";
   $("evtNotes").value = notes || "";
 
-  // if no color, set to a neutral default but treat empty as “unset”
   $("evtColor").value = color || "#0a84ff";
 
   const freq = repeat?.freq || "none";
@@ -666,11 +720,7 @@ function upsertEventFromDialog(){
 
   const location = $("evtLocation").value.trim();
   const notes = $("evtNotes").value.trim();
-
-  // Only store color if user actually picked one; treat default as optional.
-  // (If you always want a color, remove this and always store evtColor.value.)
-  const chosenColor = $("evtColor").value;
-  const color = chosenColor ? chosenColor : "";
+  const color = $("evtColor").value || "";
 
   if (!title) return alert("Please add a title.");
   const timeOk = clampToRangeTime(start, end);
@@ -686,8 +736,6 @@ function upsertEventFromDialog(){
   }
 
   const existingIndex = state.events.findIndex(e => e.id === id);
-
-  // Keep existing exdates on edit
   const existing = existingIndex >= 0 ? state.events[existingIndex] : null;
   const exdates = existing?.exdates || [];
 
@@ -712,7 +760,7 @@ function upsertEventFromDialog(){
   render();
 }
 
-/* ---------- Calendar management ---------- */
+/* ---------- Calendars ---------- */
 function openCalendarDialog(){
   refreshCalendarList();
   $("calDialog").showModal();
@@ -773,11 +821,11 @@ function createCalendar(name){
   render();
 }
 
-/* ---------- Navigation (prev/next works for all views) ---------- */
+/* ---------- Navigation ---------- */
 function goPrev(){
   const d = fromISODate(state.activeDate);
 
-  if (state.activeView === "day") d.setDate(d.getDate() - 1);
+  if (state.activeView === "day" || state.activeView === "agenda") d.setDate(d.getDate() - 1);
   else if (state.activeView === "week") d.setDate(d.getDate() - 7);
   else d.setMonth(d.getMonth() - 1);
 
@@ -787,17 +835,15 @@ function goPrev(){
 function goNext(){
   const d = fromISODate(state.activeDate);
 
-  if (state.activeView === "day") d.setDate(d.getDate() + 1);
+  if (state.activeView === "day" || state.activeView === "agenda") d.setDate(d.getDate() + 1);
   else if (state.activeView === "week") d.setDate(d.getDate() + 7);
   else d.setMonth(d.getMonth() + 1);
 
   setActiveDate(toDateISO(d));
 }
 
-/* ---------- Small helper: soften colour with alpha using CSS color-mix ---------- */
+/* ---------- Color helper ---------- */
 function colorMix(hex, alpha, asBg=false){
-  // returns a CSS color using color-mix; widely supported in modern Safari
-  // e.g., color-mix(in srgb, #ff0000 35%, transparent)
   const pct = Math.round(alpha * 100);
   if (asBg) return `color-mix(in srgb, ${hex} ${pct}%, transparent)`;
   return `color-mix(in srgb, ${hex} ${pct}%, transparent)`;
@@ -809,7 +855,11 @@ $("nextBtn").addEventListener("click", goNext);
 
 $("calendarSelect").addEventListener("change", (e) => setActiveCalendar(e.target.value));
 
-$("addEvent").addEventListener("click", () => {
+$("primaryAction").addEventListener("click", () => {
+  if (state.activeView === "agenda") {
+    setActiveView("day"); // “populate mode”
+    return;
+  }
   openEventDialog({
     date: state.activeDate,
     start: "09:00",
