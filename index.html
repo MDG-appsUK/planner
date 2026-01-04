@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Day Planner</title>
+
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="theme-color" content="#111111">
+  <link rel="stylesheet" href="styles.css" />
+</head>
+
+<body>
+  <header class="topbar">
+    <div class="row">
+      <button id="prevBtn" class="btn">←</button>
+
+      <div class="dateBlock">
+        <div id="dateLabel" class="dateLabel"></div>
+        <div class="subLabel" id="activeCalendarLabel"></div>
+      </div>
+
+      <button id="nextBtn" class="btn">→</button>
+    </div>
+
+    <div class="row row2">
+      <div class="segmented" role="tablist" aria-label="View">
+        <button class="segBtn" id="viewDay" data-view="day" role="tab">Day</button>
+        <button class="segBtn" id="viewWeek" data-view="week" role="tab">Week</button>
+        <button class="segBtn" id="viewMonth" data-view="month" role="tab">Month</button>
+      </div>
+
+      <button id="themeToggle" class="btn" title="Toggle light/dark">☼</button>
+    </div>
+
+    <div class="row row3">
+      <select id="calendarSelect" class="select"></select>
+      <button id="manageCalendars" class="btn">Calendars</button>
+      <button id="addEvent" class="btn primary">+ Add</button>
+    </div>
+  </header>
+
+  <main class="main">
+    <div id="viewHost"></div>
+  </main>
+
+  <!-- Event modal -->
+  <dialog id="eventDialog" class="dialog">
+    <form method="dialog" id="eventForm" class="dialogForm">
+      <h2 id="dialogTitle">Add event</h2>
+
+      <label>
+        Title
+        <input id="evtTitle" required maxlength="80" />
+      </label>
+
+      <div class="grid2">
+        <label>
+          Start
+          <input id="evtStart" type="time" step="1800" required />
+        </label>
+        <label>
+          End
+          <input id="evtEnd" type="time" step="1800" required />
+        </label>
+      </div>
+
+      <label>
+        Calendar
+        <select id="evtCalendar" required></select>
+      </label>
+
+      <div class="grid2">
+        <label>
+          Location (optional)
+          <input id="evtLocation" maxlength="80" />
+        </label>
+        <label>
+          Colour (optional)
+          <input id="evtColor" type="color" />
+        </label>
+      </div>
+
+      <label>
+        Notes (optional)
+        <textarea id="evtNotes" rows="3" maxlength="1200"></textarea>
+      </label>
+
+      <fieldset class="fieldset">
+        <legend>Repeat</legend>
+        <div class="grid2">
+          <label>
+            Frequency
+            <select id="evtRepeatFreq">
+              <option value="none">No repeat</option>
+              <option value="daily">Daily</option>
+              <option value="weekdays">Weekdays (Mon–Fri)</option>
+              <option value="weekly">Weekly</option>
+              <option value="monthly">Monthly</option>
+            </select>
+          </label>
+          <label>
+            Until (inclusive)
+            <input id="evtRepeatUntil" type="date" />
+          </label>
+        </div>
+        <p class="hint">If you choose a repeat frequency, set an “Until” date.</p>
+      </fieldset>
+
+      <div class="dialogActions">
+        <button value="cancel" class="btn">Cancel</button>
+        <button id="saveEventBtn" value="default" class="btn primary">Save</button>
+      </div>
+
+      <input type="hidden" id="evtId" />
+      <input type="hidden" id="evtDate" />
+    </form>
+  </dialog>
+
+  <!-- Calendar manager modal -->
+  <dialog id="calDialog" class="dialog">
+    <form method="dialog" id="calForm" class="dialogForm">
+      <h2>Calendars</h2>
+
+      <div class="row gap">
+        <input id="newCalName" placeholder="New calendar name" maxlength="30" />
+        <button id="createCal" class="btn primary" value="default">Add</button>
+      </div>
+
+      <div id="calList" class="calList"></div>
+
+      <div class="dialogActions">
+        <button value="cancel" class="btn">Close</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Delete choice modal -->
+  <dialog id="deleteDialog" class="dialog">
+    <form method="dialog" class="dialogForm">
+      <h2>Delete repeating event?</h2>
+      <p class="muted" id="deleteDialogText"></p>
+      <div class="dialogActions">
+        <button id="deleteOneBtn" value="default" class="btn">Just this day</button>
+        <button id="deleteAllBtn" value="default" class="btn danger">All repeats</button>
+        <button value="cancel" class="btn">Cancel</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script src="app.js"></script>
+</body>
+</html>
